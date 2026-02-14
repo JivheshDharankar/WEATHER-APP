@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather App - Real-time Weather Updates</title>
+    <link rel="stylesheet" href="./style.css">
+    <script src="./script.js" defer></script>
+  </head>
+  <body>
+    <!-- Animated Background -->
+    <div class="particles-bg" id="particles-bg"></div>
+    <div class="gradient-overlay"></div>
+    
+    <div class="app-container">
+      <header>
+        <div class="header-content">
+          <h1 class="app-title">
+            <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            WeatherNow
+          </h1>
+          <div class="search-container">
+            <div class="search-wrapper">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input 
+                type="text" 
+                id="search-input" 
+                placeholder="Search for a city..." 
+                autocomplete="off"
+              />
+              <button id="search-btn" class="search-btn" aria-label="Search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <div class="loading-state" id="loading">
+          <div class="spinner"></div>
+          <p>Loading weather data...</p>
+        </div>
+
+        <div class="error-state" id="error" style="display: none;">
+          <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <h2>Location Not Found</h2>
+          <p>Please try searching for another city</p>
+        </div>
+
+        <div class="weather-content" id="weather-content" style="display: none;">
+          <!-- Weather Animation Overlay -->
+          <div class="weather-animation" id="weather-animation"></div>
+          
+          <div class="weather-card main-card">
+            <div class="location-info">
+              <div class="location-header">
+                <svg class="location-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                <h2 class="location" id="location">Delhi</h2>
+              </div>
+              <div class="date-time">
+                <span class="day" id="day">Friday</span>
+                <span class="date" id="date">January 30, 2026</span>
+                <span class="time" id="time">12:50 PM</span>
+              </div>
+            </div>
+
+            <div class="current-weather">
+              <div class="weather-visual">
+                <div class="icon-container">
+                  <div class="icon-glow"></div>
+                  <img src="//cdn.weatherapi.com/weather/128x128/day/113.png" alt="weather icon" id="weather-icon" />
+                </div>
+                <div class="temperature-display">
+                  <span class="temperature" id="temperature">12.5</span>
+                  <span class="temp-unit">°C</span>
+                </div>
+              </div>
+              <div class="condition-info">
+                <h3 class="condition" id="condition">Sunny</h3>
+                <p class="feels-like">Feels like <span id="feels-like">11</span>°C</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="details-grid">
+            <div class="weather-card detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                </svg>
+              </div>
+              <div class="detail-content">
+                <span class="detail-label">Humidity</span>
+                <span class="detail-value" id="humidity">45%</span>
+              </div>
+            </div>
+
+            <div class="weather-card detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
+                </svg>
+              </div>
+              <div class="detail-content">
+                <span class="detail-label">Wind Speed</span>
+                <span class="detail-value" id="wind-speed">12 km/h</span>
+              </div>
+            </div>
+
+            <div class="weather-card detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/>
+                  <line x1="12" y1="21" x2="12" y2="23"/>
+                </svg>
+              </div>
+              <div class="detail-content">
+                <span class="detail-label">UV Index</span>
+                <span class="detail-value" id="uv-index">5</span>
+              </div>
+            </div>
+
+            <div class="weather-card detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+              </div>
+              <div class="detail-content">
+                <span class="detail-label">Pressure</span>
+                <span class="detail-value" id="pressure">1013 mb</span>
+              </div>
+            </div>
+
+            <div class="weather-card detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v10m0 0l4-4m-4 4l-4-4"/>
+                  <path d="M20 21H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2z"/>
+                </svg>
+              </div>
+              <div class="detail-content">
+                <span class="detail-label">Visibility</span>
+                <span class="detail-value" id="visibility">10 km</span>
+              </div>
+            </div>
+
+            <div class="weather-card detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <div class="detail-content">
+                <span class="detail-label">Cloud Cover</span>
+                <span class="detail-value" id="cloud-cover">20%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer>
+        <p>Data provided by WeatherAPI.com</p>
+      </footer>
+    </div>
+  </body>
+</html>
