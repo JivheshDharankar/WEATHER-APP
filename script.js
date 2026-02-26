@@ -21,10 +21,11 @@ const pressureEl = document.querySelector("#pressure");
 const visibilityEl = document.querySelector("#visibility");
 const cloudCoverEl = document.querySelector("#cloud-cover");
 
-// Initialize with default location
+// Initialize — show idle state, don't auto-fetch (avoids "Location Not Found"
+// flash on Netlify / restricted environments where the API call fails silently)
 window.addEventListener("DOMContentLoaded", () => {
   createParticles();
-  fetchWeather("Delhi");
+  showIdle();
 });
 
 // Create animated particles background
@@ -35,35 +36,35 @@ function createParticles() {
   for (let i = 0; i < particleCount; i++) {
     const particle = document.createElement("div");
     particle.className = "particle";
-    
+
     const size = Math.random() * 4 + 1;
     const xPos = Math.random() * 100;
     const delay = Math.random() * 5;
     const duration = Math.random() * 10 + 10;
-    
+    // BUG FIX 1: Give each particle a unique animation name with its own
+    // random drift so they don't all travel in the same direction.
+    const drift = Math.round(Math.random() * 100 - 50);
+    const animName = `particleFloat_${i}`;
+
+    const keyframe = document.createElement("style");
+    keyframe.textContent = `
+      @keyframes ${animName} {
+        to { transform: translateY(100vh) translateX(${drift}px); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(keyframe);
+
     particle.style.cssText = `
       width: ${size}px;
       height: ${size}px;
       left: ${xPos}%;
       top: -${size}px;
-      animation: particleFloat ${duration}s linear ${delay}s infinite;
+      animation: ${animName} ${duration}s linear ${delay}s infinite;
       opacity: ${Math.random() * 0.5 + 0.3};
     `;
-    
+
     particlesBg.appendChild(particle);
   }
-
-  // Add particle float animation
-  const style = document.createElement("style");
-  style.textContent = `
-    @keyframes particleFloat {
-      to {
-        transform: translateY(100vh) translateX(${Math.random() * 100 - 50}px);
-        opacity: 0;
-      }
-    }
-  `;
-  document.head.appendChild(style);
 }
 
 // Search button click handler
@@ -88,11 +89,20 @@ function handleSearch() {
   }
 
   fetchWeather(location);
+  userInitiated = true;
   searchInput.value = "";
 }
 
+// Track the error-recovery timeout so it can be cancelled if a new fetch
+// starts before the 3-second window expires.
+let errorTimeoutId = null;
+
+// Track whether a user search is in progress (vs. a background/auto fetch)
+let userInitiated = false;
+
 // Fetch weather data
 async function fetchWeather(location) {
+  clearTimeout(errorTimeoutId);
   showLoading();
 
   const url = `https://api.weatherapi.com/v1/current.json?key=c7236d36debb4636a18170654262201&q=${encodeURIComponent(location)}&aqi=no`;
@@ -119,7 +129,14 @@ function updateUI(data) {
   locationEl.textContent = `${data.location.name}, ${data.location.country}`;
 
   // Date and time
-  const localDateTime = new Date(data.location.localtime);
+  // BUG FIX 2: WeatherAPI returns localtime as "YYYY-MM-DD HH:MM" with no
+  // timezone info. Passing it directly to new Date() makes JS interpret it
+  // in the *browser's* local timezone, giving wrong day/date/time for any
+  // city not in the user's own timezone. Parse it manually instead.
+  const [datePart, timePart] = data.location.localtime.split(" ");
+  const [year, month, day]   = datePart.split("-").map(Number);
+  const [hours, minutes]     = timePart.split(":").map(Number);
+  const localDateTime        = new Date(year, month - 1, day, hours, minutes);
   
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -136,7 +153,7 @@ function updateUI(data) {
   temperatureEl.textContent = Math.round(data.current.temp_c);
   feelsLikeEl.textContent = Math.round(data.current.feelslike_c);
 
-  // Condition
+  // Condition & icon
   conditionEl.textContent = data.current.condition.text;
   weatherIconEl.src = `https:${data.current.condition.icon}`.replace("64x64", "128x128");
   weatherIconEl.alt = data.current.condition.text;
@@ -160,8 +177,9 @@ function updateUI(data) {
 function updateTheme(condition, isDay) {
   const body = document.body;
   
-  // Remove existing theme classes
-  body.classList.remove("sunny", "rainy", "cloudy", "night");
+  // BUG FIX 4: 'snowy' was missing from the remove list, so switching from
+  // a snowy city to any other city would leave the snow theme stuck on.
+  body.classList.remove("sunny", "rainy", "cloudy", "night", "snowy");
 
   if (!isDay) {
     body.classList.add("night");
@@ -174,6 +192,10 @@ function updateTheme(condition, isDay) {
     body.classList.add("sunny");
   } else if (lowerCondition.includes("rain") || lowerCondition.includes("drizzle") || lowerCondition.includes("thunder")) {
     body.classList.add("rainy");
+  // BUG FIX 5: snow conditions were never mapped to the 'snowy' body class,
+  // so the --snowy-gradient defined in CSS never activated.
+  } else if (lowerCondition.includes("snow") || lowerCondition.includes("sleet") || lowerCondition.includes("blizzard")) {
+    body.classList.add("snowy");
   } else if (lowerCondition.includes("cloud") || lowerCondition.includes("overcast") || lowerCondition.includes("mist") || lowerCondition.includes("fog")) {
     body.classList.add("cloudy");
   } else {
@@ -271,40 +293,57 @@ function createClouds(container) {
   }
 }
 
+// Show idle/welcome state (on first load — no search yet)
+function showIdle() {
+  loadingState.style.display = "none";
+  errorState.style.display = "none";
+  weatherContent.style.display = "none";
+  document.getElementById("idle-state").style.display = "block";
+}
+
 // Show loading state
 function showLoading() {
+  document.getElementById("idle-state").style.display = "none";
   loadingState.style.display = "block";
   errorState.style.display = "none";
   weatherContent.style.display = "none";
 }
 
-// Show error state
+// Show error state — only if the user actually typed a search
 function showError() {
+  // If this wasn't user-initiated (e.g. a background fetch), just go idle
+  if (!userInitiated) {
+    showIdle();
+    return;
+  }
+
   loadingState.style.display = "none";
   errorState.style.display = "block";
   weatherContent.style.display = "none";
 
-  // Auto-hide error after 3 seconds
-  setTimeout(() => {
+  // After 3 seconds return to idle (not loading), and reset the flag
+  errorTimeoutId = setTimeout(() => {
     if (weatherContent.style.display === "none") {
       errorState.style.display = "none";
-      loadingState.style.display = "block";
+      document.getElementById("idle-state").style.display = "block";
     }
+    userInitiated = false;
   }, 3000);
 }
 
 // Show weather content
 function showWeatherContent() {
+  document.getElementById("idle-state").style.display = "none";
   loadingState.style.display = "none";
   errorState.style.display = "none";
   weatherContent.style.display = "block";
 }
 
-// Add animation to input on error
-const style = document.createElement("style");
-style.textContent = `
-  .shake {
-    animation: shake 0.5s ease-in-out;
-  }
-`;
-document.head.appendChild(style);
+// BUG FIX 6: The original code injected a @keyframes shake style tag here
+// at script load, duplicating the shake animation already defined in the CSS
+// for .error-state. Duplicate @keyframes declarations cause unpredictable
+// behaviour across browsers. The CSS class below is all that's needed —
+// the keyframes live in style.css.
+const shakeStyle = document.createElement("style");
+shakeStyle.textContent = `.shake { animation: shake 0.5s ease-in-out; }`;
+document.head.appendChild(shakeStyle);
