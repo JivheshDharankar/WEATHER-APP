@@ -41,8 +41,7 @@ function createParticles() {
     const xPos = Math.random() * 100;
     const delay = Math.random() * 5;
     const duration = Math.random() * 10 + 10;
-    // BUG FIX 1: Give each particle a unique animation name with its own
-    // random drift so they don't all travel in the same direction.
+
     const drift = Math.round(Math.random() * 100 - 50);
     const animName = `particleFloat_${i}`;
 
@@ -128,11 +127,6 @@ function updateUI(data) {
   // Location
   locationEl.textContent = `${data.location.name}, ${data.location.country}`;
 
-  // Date and time
-  // BUG FIX 2: WeatherAPI returns localtime as "YYYY-MM-DD HH:MM" with no
-  // timezone info. Passing it directly to new Date() makes JS interpret it
-  // in the *browser's* local timezone, giving wrong day/date/time for any
-  // city not in the user's own timezone. Parse it manually instead.
   const [datePart, timePart] = data.location.localtime.split(" ");
   const [year, month, day]   = datePart.split("-").map(Number);
   const [hours, minutes]     = timePart.split(":").map(Number);
@@ -177,8 +171,8 @@ function updateUI(data) {
 function updateTheme(condition, isDay) {
   const body = document.body;
   
-  // BUG FIX 4: 'snowy' was missing from the remove list, so switching from
-  // a snowy city to any other city would leave the snow theme stuck on.
+
+ 
   body.classList.remove("sunny", "rainy", "cloudy", "night", "snowy");
 
   if (!isDay) {
@@ -192,8 +186,7 @@ function updateTheme(condition, isDay) {
     body.classList.add("sunny");
   } else if (lowerCondition.includes("rain") || lowerCondition.includes("drizzle") || lowerCondition.includes("thunder")) {
     body.classList.add("rainy");
-  // BUG FIX 5: snow conditions were never mapped to the 'snowy' body class,
-  // so the --snowy-gradient defined in CSS never activated.
+  
   } else if (lowerCondition.includes("snow") || lowerCondition.includes("sleet") || lowerCondition.includes("blizzard")) {
     body.classList.add("snowy");
   } else if (lowerCondition.includes("cloud") || lowerCondition.includes("overcast") || lowerCondition.includes("mist") || lowerCondition.includes("fog")) {
@@ -339,11 +332,7 @@ function showWeatherContent() {
   weatherContent.style.display = "block";
 }
 
-// BUG FIX 6: The original code injected a @keyframes shake style tag here
-// at script load, duplicating the shake animation already defined in the CSS
-// for .error-state. Duplicate @keyframes declarations cause unpredictable
-// behaviour across browsers. The CSS class below is all that's needed —
-// the keyframes live in style.css.
+
 const shakeStyle = document.createElement("style");
 shakeStyle.textContent = `.shake { animation: shake 0.5s ease-in-out; }`;
 document.head.appendChild(shakeStyle);
